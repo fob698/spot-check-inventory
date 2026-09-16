@@ -80,13 +80,24 @@ details.q > summary{
   list-style:none; display:block; padding:15px 26px 15px 0; position:relative;
   font-family:var(--serif); font-size:1.06rem; line-height:1.42; color:var(--ink);
 }
+.ans{display:flex; gap:9px; margin-top:11px}
+.ans button{
+  font-family:var(--sans); font-size:.84rem; letter-spacing:.02em;
+  padding:12px 22px; min-width:74px; border:1px solid var(--rule); border-radius:999px;
+  color:var(--soft); background:var(--raise);
+}
+.ans button[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+.hint{
+  display:block; font-family:var(--sans); font-size:.76rem; color:var(--faint);
+  margin:0 0 9px; letter-spacing:.01em;
+}
 details.q > summary::-webkit-details-marker{display:none}
 details.q > summary::after{
-  content:""; position:absolute; right:6px; top:24px;
+  content:""; position:absolute; right:6px; top:23px;
   width:8px; height:8px; border-right:1.5px solid var(--faint); border-bottom:1.5px solid var(--faint);
   transform:rotate(45deg); transition:transform .18s ease;
 }
-details.q[open] > summary::after{transform:rotate(-135deg); top:27px}
+details.q[open] > summary::after{transform:rotate(-135deg); top:26px}
 details.q.filled > summary{color:var(--accent)}
 .peek{
   display:block; font-family:var(--sans); font-size:.82rem; color:var(--faint);
@@ -155,6 +166,11 @@ textarea:focus{outline:none; border-color:var(--accent)}
 .fld{margin-bottom:14px}
 .fld .k{font-family:var(--serif); font-size:.95rem; color:var(--faint); margin-bottom:2px}
 .fld .v{font-family:var(--serif); font-size:1.02rem; white-space:pre-wrap; line-height:1.55}
+.fld .a{
+  display:inline-block; font-family:var(--sans); font-size:.72rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--accent); border:1px solid var(--rule);
+  border-radius:999px; padding:3px 11px; margin:2px 0 4px;
+}
 .empty{font-family:var(--serif); font-style:italic; color:var(--faint); padding:34px 0; text-align:center}
 
 /* ── bottom nav ───────────────────────────── */
@@ -252,13 +268,13 @@ const FORMS = {
     lede:"When we retire at night, we constructively review our day.",
     cite:"Alcoholics Anonymous, p. 86",
     qs:[
-      ["resentful","Were we resentful, selfish, dishonest or afraid?"],
-      ["apology","Do we owe an apology?"],
-      ["withheld","Have we kept something to ourselves which should be discussed with another person at once?"],
-      ["kind","Were we kind and loving toward all?"],
+      ["resentful","Were we resentful, selfish, dishonest or afraid?","yes","Which one, and toward whom?"],
+      ["apology","Do we owe an apology?","yes","To whom, and for what?"],
+      ["withheld","Have we kept something to ourselves which should be discussed with another person at once?","yes","What, and with whom?"],
+      ["kind","Were we kind and loving toward all?","no","Where did that fall down?"],
       ["better","What could we have done better?"],
-      ["self","Were we thinking of ourselves most of the time?"],
-      ["others","Or were we thinking of what we could do for others?"],
+      ["self","Were we thinking of ourselves most of the time?","yes","Where did that show up?"],
+      ["others","Or were we thinking of what we could do for others?","no","What got in the way?"],
       ["corrective","What corrective measures should be taken?"]
     ]
   },
@@ -267,16 +283,16 @@ const FORMS = {
     lede:"Continue to watch for selfishness, dishonesty, resentment, and fear.",
     cite:"Alcoholics Anonymous, pp. 84–85",
     qs:[
-      ["selfishness","Selfishness — where has it cropped up?"],
-      ["dishonesty","Dishonesty — where has it cropped up?"],
-      ["resentment","Resentment — where has it cropped up?"],
-      ["fear","Fear — where has it cropped up?"]
+      ["selfishness","Was I selfish?","yes","Where?"],
+      ["dishonesty","Was I dishonest?","yes","Where?"],
+      ["resentment","Was I resentful?","yes","At whom, and why?"],
+      ["fear","Was I afraid?","yes","Of what?"]
     ],
     lede2:"As we go through the day we pause, when agitated or doubtful, and ask for the right thought or action.",
     cite2:"Alcoholics Anonymous, pp. 87–88",
     qs2:[
       ["right","What is the right thought or action here?"],
-      ["amends","Is there an amend to make?"],
+      ["amends","Is there an amend to make?","yes","To whom, and for what?"],
       ["discuss","Who can I discuss this with?"]
     ]
   },
@@ -317,23 +333,66 @@ const fmt = ts => new Date(ts).toLocaleString(undefined, { weekday:"short", mont
 function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
 
 /* ════ form rendering ═════════════════════════════════════════ */
-function questionBlock(type, key, label, draft){
+/* A field is {a:"yes"|"no"|undefined, t:"note"}. Legacy entries stored a bare
+   string, so everything that reads a field goes through field(). */
+function field(v){
+  if (v == null) return {};
+  return typeof v === "string" ? { t: v } : v;
+}
+
+function questionBlock(type, key, label, flag, hint, draft){
+  const val = field(draft[key]);
   const d = el("details","q"); d.dataset.key = key;
-  const s = el("summary"); s.appendChild(document.createTextNode(label));
-  const peek = el("span","peek"); s.appendChild(peek);
+
+  const s = el("summary");
+  s.appendChild(el("span","qtext",label));
+  const peek = el("span","peek");
+  s.appendChild(peek);
+
   const body = el("div","body");
+  if(hint) body.appendChild(el("span","hint",hint));
   const ta = el("textarea");
-  ta.value = draft[key] || "";
+  ta.value = val.t || "";
   ta.setAttribute("aria-label", label);
   ta.setAttribute("autocomplete", "off");
   body.appendChild(ta);
-  d.appendChild(s); d.appendChild(body);
+
+  let answer = val.a;
+  let pills = null;
+
   const sync = () => {
-    const v = ta.value.trim();
-    d.classList.toggle("filled", v.length > 0);
-    peek.textContent = v ? clip(v, 64) : "";
+    const note = ta.value.trim();
+    d.classList.toggle("filled", !!answer || note.length > 0);
+    peek.textContent = note ? clip(note, 60) : "";
+    if(pills) pills.forEach(([b,v]) => b.setAttribute("aria-pressed", String(answer === v)));
   };
+
+  if(flag){
+    const ans = el("div","ans");
+    pills = [["yes","Yes"],["no","No"]].map(([v,txt]) => {
+      const b = el("button","",txt);
+      b.type = "button";
+      b.setAttribute("aria-pressed","false");
+      b.setAttribute("aria-label", txt + " \u2014 " + label);
+      // Inside <summary>, a click would toggle the disclosure. Answering is not expanding.
+      b.addEventListener("click", ev => {
+        ev.preventDefault(); ev.stopPropagation();
+        answer = (answer === v) ? undefined : v;   // tap again to clear
+        // Answering the way that warrants a note opens the note, ready to type.
+        if(answer === flag) d.open = true;
+        else if(answer) d.open = false;
+        sync(); saveDraft(type);
+      });
+      return [b, v];
+    });
+    pills.forEach(([b]) => ans.appendChild(b));
+    s.appendChild(ans);
+  }
+
+  d.appendChild(s); d.appendChild(body);
   ta.addEventListener("input", () => { sync(); saveDraft(type); });
+  d.addEventListener("toggle", () => { if(d.open) setTimeout(() => ta.focus(), 60); });
+  d.__read = () => ({ a: answer, t: ta.value.trim() });
   sync();
   return d;
 }
@@ -344,11 +403,11 @@ function renderForm(type){
   root.textContent = "";
   root.appendChild(el("p","lede",F.lede));
   root.appendChild(el("p","cite",F.cite));
-  F.qs.forEach(([k,q]) => root.appendChild(questionBlock(type, k, q, draft)));
+  F.qs.forEach(([k,q,flag,hint]) => root.appendChild(questionBlock(type, k, q, flag, hint, draft)));
   if(F.qs2){
     root.appendChild(el("p","lede mid",F.lede2));
     root.appendChild(el("p","cite mid",F.cite2));
-    F.qs2.forEach(([k,q]) => root.appendChild(questionBlock(type, k, q, draft)));
+    F.qs2.forEach(([k,q,flag,hint]) => root.appendChild(questionBlock(type, k, q, flag, hint, draft)));
   }
   root.appendChild(actions(type));
   root.appendChild(el("div","saved"));
@@ -450,8 +509,8 @@ function flash(type, msg){
 const saveDraftNow = type => {
   const out = {};
   document.querySelectorAll("#p-" + type + " details.q").forEach(d => {
-    const v = d.querySelector("textarea").value;
-    if(v.trim()) out[d.dataset.key] = v;
+    const v = d.__read();
+    if(v.a || v.t) out[d.dataset.key] = v.t ? { a: v.a, t: v.t } : { a: v.a };
   });
   Object.keys(out).length ? write(K.draft + type, out) : drop(K.draft + type);
 };
@@ -490,8 +549,8 @@ function labelFor(type, key){
     return c ? c[1] : key;
   }
   const F = FORMS[type];
-  const all = (F.qs || []).concat(F.qs2 || []);
-  const hit = all.filter(q => q[0] === key)[0];
+  if(!F) return key;
+  const hit = (F.qs || []).concat(F.qs2 || []).filter(q => q[0] === key)[0];
   return hit ? hit[1] : key;
 }
 const kindName = t => t === "resentment" ? "Resentment" : (FORMS[t] ? FORMS[t].title : t);
@@ -500,7 +559,24 @@ function entryText(e){
   if(e.type === "resentment"){
     return (e.rows||[]).map(r => RES.cols.map(([k]) => r[k]||"").join(" ") + " " + (r.affects||[]).join(" ")).join(" ");
   }
-  return Object.keys(e.fields||{}).map(k => labelFor(e.type, k) + " " + e.fields[k]).join(" ");
+  return Object.keys(e.fields||{}).map(k => labelFor(e.type, k) + " " + (field(e.fields[k]).t || "")).join(" ");
+}
+
+/* What a collapsed card shows: the notes if there are any, otherwise a count
+   of what was answered, so a tap-only entry still reads as something. */
+function snippet(e){
+  const txt = entryText(e).replace(/\s+/g," ").trim();
+  if(e.type !== "resentment"){
+    const ks = Object.keys(e.fields||{});
+    const notes = ks.filter(k => field(e.fields[k]).t);
+    if(!notes.length && ks.length){
+      const yes = ks.filter(k => field(e.fields[k]).a === "yes").length;
+      const no  = ks.filter(k => field(e.fields[k]).a === "no").length;
+      return ks.length + (ks.length === 1 ? " question" : " questions") +
+             " answered \u00b7 " + yes + " yes, " + no + " no";
+    }
+  }
+  return txt;
 }
 
 function renderHistory(term){
@@ -529,7 +605,7 @@ function entryCard(e){
   meta.appendChild(el("span","kind", kindName(e.type)));
   meta.appendChild(el("span","when", fmt(e.ts)));
   card.appendChild(meta);
-  card.appendChild(el("div","snip", clip(entryText(e), 92)));
+  card.appendChild(el("div","snip", clip(snippet(e), 92)));
 
   const full = el("div","full");
   if(e.type === "resentment"){
@@ -552,9 +628,11 @@ function entryCard(e){
     });
   } else {
     Object.keys(e.fields||{}).forEach(k => {
+      const v = field(e.fields[k]);
       const f = el("div","fld");
       f.appendChild(el("div","k", labelFor(e.type, k)));
-      f.appendChild(el("div","v", e.fields[k]));
+      if(v.a) f.appendChild(el("div","a", v.a === "yes" ? "Yes" : "No"));
+      if(v.t) f.appendChild(el("div","v", v.t));
       full.appendChild(f);
     });
   }

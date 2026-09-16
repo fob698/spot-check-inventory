@@ -3,9 +3,9 @@ task: "Five-tab offline AA inventory web app, phone-first"
 slug: 20260916-175742_spot-check-inventory
 project: spot-check-inventory
 phase: climbing
-progress: 26/36
+progress: 34/44
 started: 2026-09-16T17:57:42Z
-updated: 2026-09-16T18:42:00Z
+updated: 2026-09-16T19:05:00Z
 stated_goal: "I want to make a simple web program to do AA spot check inventories based on the methods written in the big book of alcoholics anonymous on pages 86 through 88."
 stated_goal_source: prompt
 stated_goal_signal: 2
@@ -90,6 +90,19 @@ Why: every tab is worthless if the app will not open in a parking lot with no si
 - [x] ISC-13: Anti: no account, login, sync, amends-tracking, reminder, notification, badge, or streak surface exists anywhere in the build.
 - [x] ISC-14: Anti: no quoted passage longer than a single question phrase appears in the app or the repository, and every quoted phrase carries its page citation.
 - [ ] ISC-15: Antecedent: a spot check performed while actually agitated completes in under sixty seconds without the user reading any instructional text.
+
+### F7 · Yes/no answering
+
+Why: most nights only two or three questions are live, and typing a sentence to say "no" is the friction that turns a practice into a chore. A yes/no tap is the whole answer for a closed question; the note box stays available for the one question that deserves a paragraph.
+
+- [x] ISC-35: Every closed question renders Yes and No controls inline on its collapsed row; open-ended questions render none.
+- [x] ISC-36: An entry saves with answers alone and no text typed anywhere.
+- [x] ISC-37: Tapping the already-selected answer clears it back to unanswered.
+- [x] ISC-38: Answering the way that warrants elaboration auto-expands that question's note; answering the other way leaves it collapsed.
+- [x] ISC-39: Yes/No controls are at least 44px tall.
+- [x] ISC-40: A saved answer renders in History as a Yes or No tag beside its question.
+- [x] ISC-41: A tap-only entry shows a meaningful summary line in History rather than a blank one.
+- [x] ISC-42: Entries saved before this feature, which stored a bare string per field, still render and still match search.
 
 ### F1 · Nightly Review (p.86)
 
@@ -182,9 +195,19 @@ Why: this is the only place the app speaks for itself, and it carries three obli
 | ISC-32 | manual-review | read the info page copy | server and device-only statement present | Read | Out of Scope |
 | ISC-33 | manual-review | read the info page copy; attempt use without installing | explanation present; no install gate | Interceptor | Out of Scope |
 | ISC-34 | manual-review | read the info page copy | non-affiliation statement present | Read | Out of Scope |
+| ISC-35 | manual-browser | count .ans groups against closed questions per tab | 6/8 nightly, 5/7 spot, 0/5 morning | Interceptor | Vision |
+| ISC-36 | manual-browser | tap four answers, save, read storage | entry persists with no text field | Interceptor | Principles |
+| ISC-37 | manual-browser | tap the selected pill again | zero pills aria-pressed | Interceptor | Principles |
+| ISC-38 | manual-browser | tap flagged and unflagged answers | flagged opens, unflagged stays shut | Interceptor | Vision |
+| ISC-39 | manual-browser | measure pill bounding box height | >= 44px | Interceptor | Constraints |
+| ISC-40 | manual-browser | expand a saved entry in History | Yes/No tag rendered per answer | Interceptor | Goal |
+| ISC-41 | manual-browser | read the collapsed card for a tap-only entry | non-empty, states what was answered | Interceptor | Vision |
+| ISC-42 | manual-review | field() normalises string and object shapes | both render and search | Read | Principles |
 
 ## Decisions
 
+- 2026-09-16 — Yes/No controls added to every closed question, by request. Three design calls beyond the ask: the controls live on the collapsed row so answering never costs an expand; the note box stays available on every question rather than only on one answer, because which answer warrants explaining differs per question; and the question is tagged with which answer is the concerning one, so answering that way opens the note automatically. A full nightly review is now eight taps and no typing, or as deep as one question deserves.
+- 2026-09-16 — The four Spot Check watches were reworded from "Selfishness — where has it cropped up?" to "Was I selfish?". The old phrasing presupposed an answer and forced a sentence; the new one is answerable with a thumb, which is the entire point of a spot check. Still the p.84–85 watch, still cited.
 - 2026-09-16 — Repository history rewritten and the remote recreated: the original `first commit` carried a different GitHub identity than the one this project is published under. All commits reauthored, local reflog and backup refs purged, `ISA.md` scrubbed of personal references. The repo now holds no trace of the other account.
 - 2026-09-16 — Interceptor is not installed on this Linux machine, so browser verification ran through headless Chromium driven over CDP instead. Same class of evidence (real renderer, real service worker, real storage), different driver. Screenshots and probe transcripts captured at 390px mobile viewport.
 - 2026-09-16 — ISAGate flagged ISC-18 and ISC-23 as bundled under the Splitting Test. Both split at scaffold time into `.1` children with parent IDs preserved, per the ID-stability rule.
@@ -229,6 +252,14 @@ _Provenance stubs. Evidence lives in the headless-Chromium CDP probe transcripts
 - ISC-33 — About explains home-screen storage benefit; no install gate in any code path
 - ISC-34 — non-affiliation sentence present in About
 - ISC-2 — `https://fob698.github.io/spot-check-inventory/` returns 200; all six shell assets serve with correct content types; SW registers at the right scope over HTTPS; offline cold launch works on the live origin
+- ISC-35 — 6/8 nightly, 5/7 spot, 0/5 morning carry answer controls
+- ISC-36 — tap-only nightly entry saved: 4 fields, all `{a:"no"}`, zero text
+- ISC-37 — second tap cleared the selection, 0 pills pressed
+- ISC-38 — Yes on a yes-flagged question opened it; No did not; No on the no-flagged "kind and loving" opened it
+- ISC-39 — measured 45px
+- ISC-40 — 5 Yes/No tags rendered across 2 expanded entries
+- ISC-41 — tap-only card reads "4 questions answered · 0 yes, 4 no"
+- ISC-42 — `field()` normalises both shapes; the pre-feature live entry still renders and matches search
 - ISC-5 — four real deploys (sci-v1 → v4); after the cache fix, new content renders on the next relaunch with entries preserved and offline still working
 
 **Not yet closed:** ISC-9 needs a timed run on the phone. ISC-15 needs a real agitated moment and a stopwatch. ISC-16, ISC-19–ISC-21, ISC-23, ISC-23.1, ISC-26 and ISC-31 are wording-fidelity or cross-tab checks awaiting a read against the actual pages.
