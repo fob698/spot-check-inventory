@@ -325,6 +325,7 @@ function questionBlock(type, key, label, draft){
   const ta = el("textarea");
   ta.value = draft[key] || "";
   ta.setAttribute("aria-label", label);
+  ta.setAttribute("autocomplete", "off");
   body.appendChild(ta);
   d.appendChild(s); d.appendChild(body);
   const sync = () => {
@@ -400,6 +401,7 @@ function resentmentRow(row, i, draft){
     const ta = el("textarea");
     ta.value = row[k] || "";
     ta.setAttribute("aria-label", label);
+    ta.setAttribute("autocomplete", "off");
     ta.addEventListener("input", debounce(() => { row[k] = ta.value; write(K.draft + "resentment", draft); }, 200));
     c.appendChild(ta);
     box.appendChild(c);
