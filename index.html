@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Spot Check</title>
+<meta name="description" content="A private, offline inventory notebook. Nothing leaves your device.">
+<meta name="theme-color" content="#FBF8F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17150F" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Spot Check">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --paper:#FBF8F2; --raise:#FFFDF8; --ink:#231F19; --soft:#6E6558; --faint:#9C9384;
+  --rule:#E5DED0; --accent:#8C5A3C; --accent-soft:#F2E7DC; --danger:#9B3B2E;
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  --nav-h: 58px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#17150F; --raise:#201D16; --ink:#EAE3D5; --soft:#A79E8D; --faint:#786F5F;
+    --rule:#332E24; --accent:#CE9268; --accent-soft:#2B241C; --danger:#D97A67;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#17150F; --raise:#201D16; --ink:#EAE3D5; --soft:#A79E8D; --faint:#786F5F;
+  --rule:#332E24; --accent:#CE9268; --accent-soft:#2B241C; --danger:#D97A67;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper); color:var(--ink); font-family:var(--sans);
+  font-size:16px; line-height:1.55; -webkit-text-size-adjust:100%;
+  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  overflow-x:hidden;
+}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ── header ───────────────────────────────── */
+header{
+  position:sticky; top:0; z-index:20; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 18px) 20px 10px;
+  display:flex; align-items:baseline; gap:12px;
+  border-bottom:1px solid var(--rule);
+}
+h1{
+  font-family:var(--serif); font-weight:400; font-size:1.42rem;
+  letter-spacing:.005em; margin:0; flex:1; color:var(--ink);
+}
+.hbtn{
+  font-size:.74rem; letter-spacing:.09em; text-transform:uppercase;
+  color:var(--faint); padding:6px 2px; white-space:nowrap;
+}
+.hbtn:active{color:var(--accent)}
+
+/* ── panels ───────────────────────────────── */
+main{padding:0 20px; max-width:38rem; margin:0 auto}
+.panel{display:none; padding:22px 0 40px}
+.panel.on{display:block}
+.lede{
+  font-family:var(--serif); font-size:1.02rem; line-height:1.5;
+  color:var(--soft); margin:0 0 4px; font-style:italic;
+}
+.cite{
+  font-size:.72rem; letter-spacing:.07em; text-transform:uppercase;
+  color:var(--faint); margin:0 0 22px;
+}
+.lede.mid{margin-top:34px}
+.cite.mid{margin-bottom:6px}
+
+/* ── question rows (native details = collapsed by default) ── */
+details.q{border-bottom:1px solid var(--rule)}
+details.q > summary{
+  list-style:none; display:block; padding:15px 26px 15px 0; position:relative;
+  font-family:var(--serif); font-size:1.06rem; line-height:1.42; color:var(--ink);
+}
+details.q > summary::-webkit-details-marker{display:none}
+details.q > summary::after{
+  content:""; position:absolute; right:6px; top:24px;
+  width:8px; height:8px; border-right:1.5px solid var(--faint); border-bottom:1.5px solid var(--faint);
+  transform:rotate(45deg); transition:transform .18s ease;
+}
+details.q[open] > summary::after{transform:rotate(-135deg); top:27px}
+details.q.filled > summary{color:var(--accent)}
+.peek{
+  display:block; font-family:var(--sans); font-size:.82rem; color:var(--faint);
+  margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+details.q[open] .peek{display:none}
+.body{padding:0 0 16px}
+textarea{
+  width:100%; min-height:110px; resize:vertical; padding:12px 13px;
+  background:var(--raise); color:var(--ink); border:1px solid var(--rule);
+  border-radius:3px; font-family:var(--serif); font-size:1rem; line-height:1.55;
+}
+textarea:focus{outline:none; border-color:var(--accent)}
+
+/* ── affects checkboxes ───────────────────── */
+.affects{display:flex; flex-wrap:wrap; gap:7px; padding:2px 0 14px}
+.affects label{
+  font-size:.82rem; padding:7px 12px; border:1px solid var(--rule);
+  border-radius:999px; color:var(--soft); background:var(--raise); user-select:none;
+}
+.affects input{position:absolute; opacity:0; pointer-events:none}
+.affects input:checked + span{color:var(--accent)}
+.affects label:has(input:checked){border-color:var(--accent); background:var(--accent-soft)}
+
+/* ── resentment rows ──────────────────────── */
+.row{border:1px solid var(--rule); border-radius:4px; padding:4px 14px 10px; margin-bottom:16px; background:var(--raise)}
+.row h3{
+  font-family:var(--sans); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--faint); font-weight:600; margin:14px 0 8px;
+}
+.row .col{margin-bottom:2px}
+.row textarea{min-height:64px; background:var(--paper)}
+.rowhead{display:flex; align-items:center; justify-content:space-between; padding-top:10px}
+.rowhead b{font-family:var(--serif); font-weight:400; font-size:.95rem; color:var(--soft)}
+
+/* ── actions ──────────────────────────────── */
+.actions{display:flex; gap:10px; align-items:center; margin-top:26px}
+.primary{
+  background:var(--accent); color:#FFFDF8; padding:13px 26px; border-radius:3px;
+  font-size:.92rem; letter-spacing:.02em; flex:1; text-align:center;
+}
+:root[data-theme="dark"] .primary, :root:not([data-theme="light"]) .primary{color:#17150F}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]) .primary{color:#FFFDF8} }
+.ghost{
+  padding:13px 18px; border:1px solid var(--rule); border-radius:3px;
+  font-size:.92rem; color:var(--soft);
+}
+.ghost.warn{color:var(--danger); border-color:var(--rule)}
+.saved{font-size:.85rem; color:var(--accent); padding:8px 0 0; height:1.4em}
+
+/* ── history ──────────────────────────────── */
+.search{
+  width:100%; padding:12px 13px; background:var(--raise); color:var(--ink);
+  border:1px solid var(--rule); border-radius:3px; font-family:var(--sans);
+  font-size:.95rem; margin-bottom:8px;
+}
+.search:focus{outline:none; border-color:var(--accent)}
+.entry{border-bottom:1px solid var(--rule); padding:16px 0}
+.entry .meta{display:flex; gap:9px; align-items:baseline; margin-bottom:3px}
+.entry .kind{font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent)}
+.entry .when{font-size:.78rem; color:var(--faint)}
+.entry .snip{font-family:var(--serif); color:var(--soft); font-size:.95rem; margin-top:2px}
+.entry .full{display:none; margin-top:10px}
+.entry.open .full{display:block}
+.entry.open .snip{display:none}
+.fld{margin-bottom:14px}
+.fld .k{font-family:var(--serif); font-size:.95rem; color:var(--faint); margin-bottom:2px}
+.fld .v{font-family:var(--serif); font-size:1.02rem; white-space:pre-wrap; line-height:1.55}
+.empty{font-family:var(--serif); font-style:italic; color:var(--faint); padding:34px 0; text-align:center}
+
+/* ── bottom nav ───────────────────────────── */
+nav{
+  position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
+  background:var(--paper); border-top:1px solid var(--rule);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  flex:1; padding:11px 2px 12px; font-size:.66rem; letter-spacing:.05em;
+  color:var(--faint); text-align:center; min-height:var(--nav-h);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+nav button .dot{width:5px; height:5px; border-radius:50%; background:transparent}
+nav button[aria-current="true"]{color:var(--accent)}
+nav button[aria-current="true"] .dot{background:var(--accent)}
+
+/* ── info overlay ─────────────────────────── */
+.overlay{
+  position:fixed; inset:0; z-index:60; background:var(--paper);
+  overflow-y:auto; padding:calc(env(safe-area-inset-top) + 34px) 22px calc(env(safe-area-inset-bottom) + 40px);
+}
+.overlay[hidden]{display:none}
+.sheet{max-width:34rem; margin:0 auto}
+.sheet h2{font-family:var(--serif); font-weight:400; font-size:1.5rem; margin:0 0 4px}
+.sheet h3{font-family:var(--sans); font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); margin:28px 0 7px; font-weight:600}
+.sheet p{font-family:var(--serif); font-size:1rem; line-height:1.6; margin:0 0 11px; color:var(--ink)}
+.sheet p.dim{color:var(--soft); font-size:.94rem}
+.sheet .rule{height:1px; background:var(--rule); margin:26px 0 0}
+</style>
+</head>
+<body>
+
+<div id="info" class="overlay" hidden>
+  <div class="sheet">
+    <h2>Spot Check</h2>
+    <p class="dim">A private notebook for the Tenth and Eleventh Step practices described in <i>Alcoholics Anonymous</i>.</p>
+
+    <h3>Your writing stays on this device</h3>
+    <p>Nothing you write here is held on any server. There is no account, no login, and no sync. Every word is stored by your browser on this device alone, and it is never sent anywhere. Nobody, including whoever made this, can read it.</p>
+
+    <h3>Which also means it can be lost</h3>
+    <p>Because there is no copy anywhere else, clearing your browser data erases everything. On iPhone, Safari also clears storage for sites you have not opened in about a week. Adding this to your home screen exempts it from that and keeps your entries far longer. You do not have to. Everything works either way.</p>
+    <p class="dim">To add it: tap Share, then <i>Add to Home Screen</i>.</p>
+
+    <h3>It works offline</h3>
+    <p>Once it has loaded, it keeps working with no signal at all.</p>
+
+    <h3>Not an official AA product</h3>
+    <p>This app is not affiliated with, endorsed by, or approved by Alcoholics Anonymous World Services, Inc. It is a personal tool. Short questions are quoted from the book with page citations; the book itself is not reproduced here.</p>
+
+    <div class="rule"></div>
+    <div class="actions"><button class="primary" id="info-close">Begin</button></div>
+  </div>
+</div>
+
+<header>
+  <h1 id="title">Nightly</h1>
+  <button class="hbtn" id="theme" title="Theme">Theme</button>
+  <button class="hbtn" id="info-open" title="About">About</button>
+</header>
+
+<main>
+  <section class="panel" id="p-nightly"></section>
+  <section class="panel" id="p-spot"></section>
+  <section class="panel" id="p-morning"></section>
+  <section class="panel" id="p-resentment"></section>
+  <section class="panel" id="p-history"></section>
+</main>
+
+<nav id="nav"></nav>
+
+<script>
+"use strict";
+/* ════ storage ════════════════════════════════════════════════ */
+const K = { entries:"sci.v1.entries", draft:"sci.v1.draft.", prefs:"sci.v1.prefs" };
+function read(key, fallback){
+  try { const v = localStorage.getItem(key); return v === null ? fallback : JSON.parse(v); }
+  catch(e){ return fallback; }
+}
+function write(key, val){
+  try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch(e){ return false; }
+}
+function drop(key){ try { localStorage.removeItem(key); } catch(e){} }
+
+const prefs = Object.assign({ tab:"nightly", theme:"auto", seen:false }, read(K.prefs, {}));
+const savePrefs = () => write(K.prefs, prefs);
+
+/* ════ content ════════════════════════════════════════════════ */
+const AFFECTS = ["Self-esteem","Security","Ambitions","Personal relations","Sex relations"];
+
+const FORMS = {
+  nightly: {
+    tab:"Nightly", title:"Nightly Review",
+    lede:"When we retire at night, we constructively review our day.",
+    cite:"Alcoholics Anonymous, p. 86",
+    qs:[
+      ["resentful","Were we resentful, selfish, dishonest or afraid?"],
+      ["apology","Do we owe an apology?"],
+      ["withheld","Have we kept something to ourselves which should be discussed with another person at once?"],
+      ["kind","Were we kind and loving toward all?"],
+      ["better","What could we have done better?"],
+      ["self","Were we thinking of ourselves most of the time?"],
+      ["others","Or were we thinking of what we could do for others?"],
+      ["corrective","What corrective measures should be taken?"]
+    ]
+  },
+  spot: {
+    tab:"Spot Check", title:"Spot Check",
+    lede:"Continue to watch for selfishness, dishonesty, resentment, and fear.",
+    cite:"Alcoholics Anonymous, pp. 84–85",
+    qs:[
+      ["selfishness","Selfishness — where has it cropped up?"],
+      ["dishonesty","Dishonesty — where has it cropped up?"],
+      ["resentment","Resentment — where has it cropped up?"],
+      ["fear","Fear — where has it cropped up?"]
+    ],
+    lede2:"As we go through the day we pause, when agitated or doubtful, and ask for the right thought or action.",
+    cite2:"Alcoholics Anonymous, pp. 87–88",
+    qs2:[
+      ["right","What is the right thought or action here?"],
+      ["amends","Is there an amend to make?"],
+      ["discuss","Who can I discuss this with?"]
+    ]
+  },
+  morning: {
+    tab:"Morning", title:"On Awakening",
+    lede:"On awakening let us think about the twenty-four hours ahead.",
+    cite:"Alcoholics Anonymous, pp. 86–87",
+    qs:[
+      ["plans","What are my plans for the day?"],
+      ["motives","Where might self-pity, dishonest or self-seeking motives enter?"],
+      ["indecision","Where am I facing indecision?"],
+      ["shown","What am I asking to be shown?"],
+      ["selfwill","Where do I need freedom from self-will?"]
+    ]
+  }
+};
+
+const RES = {
+  tab:"Resentment", title:"Resentment Inventory",
+  lede:"We listed people, institutions or principles with whom we were angry.",
+  cite:"Alcoholics Anonymous, pp. 64–67",
+  cols:[
+    ["who","I'm resentful at"],
+    ["cause","The cause"],
+    ["part","My part — where was I selfish, dishonest, self-seeking and frightened?"]
+  ]
+};
+
+const TABS = [
+  ["nightly","Nightly"], ["spot","Spot"], ["morning","Morning"],
+  ["resentment","Resentment"], ["history","History"]
+];
+
+/* ════ small helpers ══════════════════════════════════════════ */
+const el = (tag, cls, txt) => { const n = document.createElement(tag); if(cls) n.className = cls; if(txt != null) n.textContent = txt; return n; };
+const clip = (s, n) => { s = String(s).replace(/\s+/g," ").trim(); return s.length > n ? s.slice(0, n - 1) + "…" : s; };
+const fmt = ts => new Date(ts).toLocaleString(undefined, { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+function debounce(fn, ms){ let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+/* ════ form rendering ═════════════════════════════════════════ */
+function questionBlock(type, key, label, draft){
+  const d = el("details","q"); d.dataset.key = key;
+  const s = el("summary"); s.appendChild(document.createTextNode(label));
+  const peek = el("span","peek"); s.appendChild(peek);
+  const body = el("div","body");
+  const ta = el("textarea");
+  ta.value = draft[key] || "";
+  ta.setAttribute("aria-label", label);
+  body.appendChild(ta);
+  d.appendChild(s); d.appendChild(body);
+  const sync = () => {
+    const v = ta.value.trim();
+    d.classList.toggle("filled", v.length > 0);
+    peek.textContent = v ? clip(v, 64) : "";
+  };
+  ta.addEventListener("input", () => { sync(); saveDraft(type); });
+  sync();
+  return d;
+}
+
+function renderForm(type){
+  const F = FORMS[type], root = document.getElementById("p-" + type);
+  const draft = read(K.draft + type, {});
+  root.textContent = "";
+  root.appendChild(el("p","lede",F.lede));
+  root.appendChild(el("p","cite",F.cite));
+  F.qs.forEach(([k,q]) => root.appendChild(questionBlock(type, k, q, draft)));
+  if(F.qs2){
+    root.appendChild(el("p","lede mid",F.lede2));
+    root.appendChild(el("p","cite mid",F.cite2));
+    F.qs2.forEach(([k,q]) => root.appendChild(questionBlock(type, k, q, draft)));
+  }
+  root.appendChild(actions(type));
+  root.appendChild(el("div","saved"));
+}
+
+function renderResentment(){
+  const root = document.getElementById("p-resentment");
+  const draft = read(K.draft + "resentment", { rows:[{}] });
+  if(!draft.rows || !draft.rows.length) draft.rows = [{}];
+  root.textContent = "";
+  root.appendChild(el("p","lede",RES.lede));
+  root.appendChild(el("p","cite",RES.cite));
+  const host = el("div"); host.id = "res-rows"; root.appendChild(host);
+
+  draft.rows.forEach((row, i) => host.appendChild(resentmentRow(row, i, draft)));
+
+  const add = el("button","ghost","Add another");
+  add.style.width = "100%";
+  add.addEventListener("click", () => {
+    draft.rows.push({});
+    write(K.draft + "resentment", draft);
+    renderResentment();
+    document.getElementById("res-rows").lastElementChild.scrollIntoView({ behavior:"smooth", block:"center" });
+  });
+  root.appendChild(add);
+  root.appendChild(actions("resentment"));
+  root.appendChild(el("div","saved"));
+}
+
+function resentmentRow(row, i, draft){
+  const box = el("div","row");
+  const head = el("div","rowhead");
+  head.appendChild(el("b","", "— " + (i + 1) + " —"));
+  if(draft.rows.length > 1){
+    const rm = el("button","hbtn","Remove");
+    rm.style.color = "var(--danger)";
+    rm.addEventListener("click", () => {
+      if(!confirm("Remove this resentment?")) return;
+      draft.rows.splice(i, 1);
+      write(K.draft + "resentment", draft);
+      renderResentment();
+    });
+    head.appendChild(rm);
+  }
+  box.appendChild(head);
+
+  RES.cols.forEach(([k,label]) => {
+    const c = el("div","col");
+    c.appendChild(el("h3","",label));
+    const ta = el("textarea");
+    ta.value = row[k] || "";
+    ta.setAttribute("aria-label", label);
+    ta.addEventListener("input", debounce(() => { row[k] = ta.value; write(K.draft + "resentment", draft); }, 200));
+    c.appendChild(ta);
+    box.appendChild(c);
+  });
+
+  box.appendChild(el("h3","","Affects my"));
+  const aff = el("div","affects");
+  row.affects = row.affects || [];
+  AFFECTS.forEach(a => {
+    const lab = el("label");
+    const cb = el("input"); cb.type = "checkbox"; cb.checked = row.affects.indexOf(a) > -1;
+    cb.addEventListener("change", () => {
+      row.affects = cb.checked ? row.affects.concat([a]) : row.affects.filter(x => x !== a);
+      write(K.draft + "resentment", draft);
+    });
+    lab.appendChild(cb); lab.appendChild(el("span","",a));
+    aff.appendChild(lab);
+  });
+  box.appendChild(aff);
+  return box;
+}
+
+function actions(type){
+  const wrap = el("div","actions");
+  const save = el("button","primary","Save");
+  save.addEventListener("click", () => commit(type));
+  const clear = el("button","ghost warn","Discard");
+  clear.addEventListener("click", () => {
+    if(!confirm("Discard what you have written here? This cannot be undone.")) return;
+    drop(K.draft + type);
+    type === "resentment" ? renderResentment() : renderForm(type);
+    flash(type, "Discarded.");
+  });
+  wrap.appendChild(save); wrap.appendChild(clear);
+  return wrap;
+}
+
+function flash(type, msg){
+  const n = document.querySelector("#p-" + type + " .saved");
+  if(!n) return;
+  n.textContent = msg;
+  setTimeout(() => { if(n.textContent === msg) n.textContent = ""; }, 2600);
+}
+
+/* ════ drafts + commit ════════════════════════════════════════ */
+const saveDraftNow = type => {
+  const out = {};
+  document.querySelectorAll("#p-" + type + " details.q").forEach(d => {
+    const v = d.querySelector("textarea").value;
+    if(v.trim()) out[d.dataset.key] = v;
+  });
+  Object.keys(out).length ? write(K.draft + type, out) : drop(K.draft + type);
+};
+const saveDraft = debounce(saveDraftNow, 250);
+
+function commit(type){
+  if(type === "resentment"){
+    const draft = read(K.draft + "resentment", { rows:[] });
+    const rows = (draft.rows || []).filter(r => RES.cols.some(([k]) => (r[k]||"").trim()) || (r.affects||[]).length);
+    if(!rows.length){ flash(type, "Nothing written yet."); return; }
+    push({ type:"resentment", rows:rows });
+  } else {
+    saveDraftNow(type);
+    const fields = read(K.draft + type, {});
+    if(!Object.keys(fields).length){ flash(type, "Nothing written yet."); return; }
+    push({ type:type, fields:fields });
+  }
+  drop(K.draft + type);
+  type === "resentment" ? renderResentment() : renderForm(type);
+  flash(type, "Saved to this device.");
+  renderHistory();
+}
+
+function push(entry){
+  entry.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  entry.ts = Date.now();
+  const all = read(K.entries, []);
+  all.push(entry);
+  if(!write(K.entries, all)) alert("This device would not let the app save. Storage may be full or blocked.");
+}
+
+/* ════ history ════════════════════════════════════════════════ */
+function labelFor(type, key){
+  if(type === "resentment"){
+    const c = RES.cols.filter(c => c[0] === key)[0];
+    return c ? c[1] : key;
+  }
+  const F = FORMS[type];
+  const all = (F.qs || []).concat(F.qs2 || []);
+  const hit = all.filter(q => q[0] === key)[0];
+  return hit ? hit[1] : key;
+}
+const kindName = t => t === "resentment" ? "Resentment" : (FORMS[t] ? FORMS[t].title : t);
+
+function entryText(e){
+  if(e.type === "resentment"){
+    return (e.rows||[]).map(r => RES.cols.map(([k]) => r[k]||"").join(" ") + " " + (r.affects||[]).join(" ")).join(" ");
+  }
+  return Object.keys(e.fields||{}).map(k => labelFor(e.type, k) + " " + e.fields[k]).join(" ");
+}
+
+function renderHistory(term){
+  const root = document.getElementById("p-history");
+  const q = (term == null ? (document.getElementById("hsearch") || {}).value || "" : term).trim().toLowerCase();
+  root.textContent = "";
+
+  const search = el("input","search");
+  search.id = "hsearch"; search.type = "search"; search.placeholder = "Search what you have written";
+  search.value = q;
+  search.addEventListener("input", debounce(() => renderHistory(search.value), 150));
+  root.appendChild(search);
+
+  const all = read(K.entries, []).slice().sort((a,b) => b.ts - a.ts);
+  const hits = q ? all.filter(e => entryText(e).toLowerCase().indexOf(q) > -1) : all;
+
+  if(!all.length){ root.appendChild(el("p","empty","Nothing saved yet.")); return; }
+  if(!hits.length){ root.appendChild(el("p","empty","No entry matches that.")); return; }
+
+  hits.forEach(e => root.appendChild(entryCard(e)));
+}
+
+function entryCard(e){
+  const card = el("div","entry");
+  const meta = el("div","meta");
+  meta.appendChild(el("span","kind", kindName(e.type)));
+  meta.appendChild(el("span","when", fmt(e.ts)));
+  card.appendChild(meta);
+  card.appendChild(el("div","snip", clip(entryText(e), 92)));
+
+  const full = el("div","full");
+  if(e.type === "resentment"){
+    (e.rows||[]).forEach((r, i) => {
+      full.appendChild(el("div","k")).className = "fld k";
+      const head = full.lastElementChild; head.textContent = "— " + (i+1) + " —";
+      RES.cols.forEach(([k,label]) => {
+        if(!(r[k]||"").trim()) return;
+        const f = el("div","fld");
+        f.appendChild(el("div","k", label));
+        f.appendChild(el("div","v", r[k]));
+        full.appendChild(f);
+      });
+      if((r.affects||[]).length){
+        const f = el("div","fld");
+        f.appendChild(el("div","k","Affects my"));
+        f.appendChild(el("div","v", r.affects.join(", ")));
+        full.appendChild(f);
+      }
+    });
+  } else {
+    Object.keys(e.fields||{}).forEach(k => {
+      const f = el("div","fld");
+      f.appendChild(el("div","k", labelFor(e.type, k)));
+      f.appendChild(el("div","v", e.fields[k]));
+      full.appendChild(f);
+    });
+  }
+  const del = el("button","hbtn","Delete");
+  del.style.color = "var(--danger)"; del.style.paddingTop = "4px";
+  del.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if(!confirm("Delete this entry permanently? It cannot be recovered.")) return;
+    write(K.entries, read(K.entries, []).filter(x => x.id !== e.id));
+    renderHistory();
+  });
+  full.appendChild(del);
+  card.appendChild(full);
+
+  card.addEventListener("click", () => card.classList.toggle("open"));
+  return card;
+}
+
+/* ════ tabs, theme, info ══════════════════════════════════════ */
+function show(tab){
+  prefs.tab = tab; savePrefs();
+  document.querySelectorAll(".panel").forEach(p => p.classList.toggle("on", p.id === "p-" + tab));
+  document.querySelectorAll("#nav button").forEach(b => b.setAttribute("aria-current", String(b.dataset.tab === tab)));
+  document.getElementById("title").textContent =
+    tab === "history" ? "History" : (tab === "resentment" ? RES.title : FORMS[tab].title);
+  if(tab === "history") renderHistory("");
+  window.scrollTo(0, 0);
+}
+
+function buildNav(){
+  const nav = document.getElementById("nav");
+  TABS.forEach(([id,label]) => {
+    const b = el("button"); b.dataset.tab = id;
+    b.appendChild(el("span","dot"));
+    b.appendChild(el("span","", label));
+    b.addEventListener("click", () => show(id));
+    nav.appendChild(b);
+  });
+}
+
+function applyTheme(){
+  if(prefs.theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", prefs.theme);
+  document.getElementById("theme").textContent =
+    prefs.theme === "auto" ? "Auto" : (prefs.theme === "dark" ? "Dark" : "Light");
+}
+
+/* ════ boot ═══════════════════════════════════════════════════ */
+renderForm("nightly"); renderForm("spot"); renderForm("morning");
+renderResentment(); renderHistory("");
+buildNav();
+applyTheme();
+const known = TABS.map(t => t[0]);
+show(known.indexOf(prefs.tab) > -1 ? prefs.tab : "nightly");
+
+document.getElementById("theme").addEventListener("click", () => {
+  prefs.theme = prefs.theme === "auto" ? "light" : (prefs.theme === "light" ? "dark" : "auto");
+  savePrefs(); applyTheme();
+});
+const infoBox = document.getElementById("info");
+document.getElementById("info-open").addEventListener("click", () => { infoBox.hidden = false; window.scrollTo(0,0); });
+document.getElementById("info-close").addEventListener("click", () => {
+  infoBox.hidden = true; prefs.seen = true; savePrefs();
+});
+if(!prefs.seen) infoBox.hidden = false;
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+</body>
+</html>
