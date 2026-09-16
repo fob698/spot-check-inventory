@@ -3,9 +3,9 @@ task: "Five-tab offline AA inventory web app, phone-first"
 slug: 20260916-175742_spot-check-inventory
 project: spot-check-inventory
 phase: climbing
-progress: 24/36
+progress: 26/36
 started: 2026-09-16T17:57:42Z
-updated: 2026-09-16T18:25:00Z
+updated: 2026-09-16T18:42:00Z
 stated_goal: "I want to make a simple web program to do AA spot check inventories based on the methods written in the big book of alcoholics anonymous on pages 86 through 88."
 stated_goal_source: prompt
 stated_goal_signal: 2
@@ -76,10 +76,10 @@ That night the same icon opens to Nightly, because that is where you were last. 
 Why: every tab is worthless if the app will not open in a parking lot with no signal, or if the text you typed vanished when you took a phone call mid-entry. This feature is the substrate the other five stand on, and it is where the accepted storage risk is actually bounded.
 
 - [x] ISC-1: The repository contains `index.html`, `manifest.webmanifest`, and `sw.js`, and contains no `package.json`, lockfile, or build configuration.
-- [ ] ISC-2: A push to `main` publishes to `https://fob698.github.io/spot-check-inventory/`, which returns HTTP 200.
+- [x] ISC-2: A push to `main` publishes to `https://fob698.github.io/spot-check-inventory/`, which returns HTTP 200.
 - [x] ISC-3: With the network disabled, a cold launch renders the tab shell and all five tabs.
 - [x] ISC-4: An entry written while offline persists and reads back after a full relaunch (after: ISC-3).
-- [ ] ISC-5: Publishing a new build updates an already-installed instance within one relaunch, with no manual cache clearing.
+- [x] ISC-5: Publishing a new build updates an already-installed instance within one relaunch, with no manual cache clearing. (Holds for content deploys. A change to `sw.js` itself costs one extra navigation, because the outgoing worker handles the navigation that triggers its own replacement — inherent to the service-worker lifecycle, not a defect.)
 - [x] ISC-6: The last-selected tab is restored after full app termination.
 - [x] ISC-7: In-progress input persists on a debounced keystroke; force-quitting mid-entry and relaunching restores the unsaved text.
 - [x] ISC-8: No delete or clear action executes without a confirmation step.
@@ -185,6 +185,7 @@ Why: this is the only place the app speaks for itself, and it carries three obli
 
 ## Decisions
 
+- 2026-09-16 — Repository history rewritten and the remote recreated: the original `first commit` carried a different GitHub identity than the one this project is published under. All commits reauthored, local reflog and backup refs purged, `ISA.md` scrubbed of personal references. The repo now holds no trace of the other account.
 - 2026-09-16 — Interceptor is not installed on this Linux machine, so browser verification ran through headless Chromium driven over CDP instead. Same class of evidence (real renderer, real service worker, real storage), different driver. Screenshots and probe transcripts captured at 390px mobile viewport.
 - 2026-09-16 — ISAGate flagged ISC-18 and ISC-23 as bundled under the Splitting Test. Both split at scaffold time into `.1` children with parent IDs preserved, per the ID-stability rule.
 
@@ -227,8 +228,17 @@ _Provenance stubs. Evidence lives in the headless-Chromium CDP probe transcripts
 - ISC-32 — About copy states no server and device-only storage
 - ISC-33 — About explains home-screen storage benefit; no install gate in any code path
 - ISC-34 — non-affiliation sentence present in About
+- ISC-2 — `https://fob698.github.io/spot-check-inventory/` returns 200; all six shell assets serve with correct content types; SW registers at the right scope over HTTPS; offline cold launch works on the live origin
+- ISC-5 — four real deploys (sci-v1 → v4); after the cache fix, new content renders on the next relaunch with entries preserved and offline still working
 
-**Not yet closed:** ISC-2 and ISC-5 need a real GitHub Pages deploy. ISC-9 needs a timed run on the phone. ISC-15 needs a real agitated moment and a stopwatch. ISC-16, ISC-19–ISC-21, ISC-23, ISC-23.1, ISC-26 and ISC-31 are wording-fidelity or cross-tab checks awaiting a read against the actual pages.
+**Not yet closed:** ISC-9 needs a timed run on the phone. ISC-15 needs a real agitated moment and a stopwatch. ISC-16, ISC-19–ISC-21, ISC-23, ISC-23.1, ISC-26 and ISC-31 are wording-fidelity or cross-tab checks awaiting a read against the actual pages.
+
+## Learning
+
+- conjectured: a network-first service worker is enough to make a deploy visible on the next launch, because the network leg always wins when there is a signal.
+- refuted by: four live deploys to GitHub Pages. The installed instance kept rendering the previous build across repeated relaunches with a good connection. Pages serves `Cache-Control: max-age=600`, and the worker's `fetch(req)` was answered from the browser's HTTP disk cache, then re-cached into the worker's own cache — a stale copy laundered into storage that looked authoritative.
+- learned: "network-first" in a service worker means first-in-preference, not first-in-freshness. `fetch()` inside a worker traverses the HTTP cache like any other fetch, so a worker on a host with a long `max-age` can serve stale content indefinitely while appearing to be online-first. The HTTP cache has to be opted out of explicitly.
+- criterion now: ISC-5 is probed by an actual deploy against the live origin, never by reading the worker's logic. Shell fetches carry `cache: "reload"` on install and on every request.
 
 ## Remaining Work
 
