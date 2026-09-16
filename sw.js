@@ -1,7 +1,7 @@
 /* Spot Check service worker.
    VERSION is bumped on every deploy; skipWaiting + clients.claim mean a new
    build takes over on the next launch without a manual cache clear. */
-const VERSION = "sci-v1";
+const VERSION = "sci-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-180.png"];
 
 self.addEventListener("install", e => {
